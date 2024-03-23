@@ -59,7 +59,7 @@ def conduct_debate(topic, question):
     print("Question:", question[0])
     generate_audio(question[0], "question.mp3")
     os.system("afplay question.mp3")
-    time.sleep(30)  # 30-second preparation time
+    time.sleep(10)  # 30-second preparation time
 
     # Determining which team argues for and which against
     teams = ["for", "against"]
@@ -94,22 +94,31 @@ def debate_interface(topic, num_questions):
     # Analyze and decide the winner
     affirmative_answers = debate_answers.get("for", [])
     negative_answers = debate_answers.get("against", [])
-    prompt = f"Analyze the debate answers and determine the winner between Team 1 (affirmative) and Team 2 (negative).\nAffirmative arguments: {' | '.join(affirmative_answers)}\nNegative arguments: {' | '.join(negative_answers)}"
-    try:
-        response = openai.Completion.create(
-            engine="gpt-3.5-turbo",
-            prompt=prompt,
-        )
-        winner = response.choices[0].text.strip()
-        generate_audio(f"The winner of the debate is {winner}.", "winner_announcement.mp3")
-        os.system("afplay winner_announcement.mp3")
-    except Exception as e:
-        print(f"An error occurred while determining the winner: {e}")
-        winner = "Error occurred while determining the winner."
+    prompt = f"Analyze answers by each participant, For side : {affirmative_answers}; Against side {negative_answers} for the debate_topic, {questions[0]} and provide feedback as a judge of debate competition, announce the winner and highlight action items or additional resources for improvement."
 
-    # Generate feedback for the losing team
-    feedback_text = f"Feedback for the losing team: Implement the following action items for improvement."
-    return feedback_text, winner
+    messages = [
+        {"role": "system", "content": prompt}
+    ]
+
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=messages
+        )
+
+        # Split the response into a list of feedback messages
+        feedback_list = response.choices[0].message["content"].split("\n")
+
+        # Remove any empty strings from the list
+        feedback_list = [feedback.strip() for feedback in feedback_list if feedback.strip()]
+
+        # Concatenate the feedback messages into a single string
+        feedback_string = "\n".join(feedback_list)
+
+        return feedback_string
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return ""
 
 iface = gr.Interface(
     fn=debate_interface,
